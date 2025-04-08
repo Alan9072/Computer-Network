@@ -1,34 +1,57 @@
-#include<stdio.h>
-#include<string.h>
-#include<sys/socket.h>
-#include<stdlib.h>
-#include<netdb.h>
+#include <arpa/inet.h> // inet_addr()
+#include <netdb.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h> // bzero()
+#include <sys/socket.h>
+#include <unistd.h> // read(), write(), close()
 
-int main(int argc,char* argv[])
-{
-    struct sockaddr_in server,client;
-    if(argc!=2)
-    printf("Input format not correct");
+#define PORT 4000
+#define MAX 1024
 
-    int sockfd=socket(AF_INET,SOCK_DGRAM,0);
-    if(sockfd==-1)
-    printf("Error in socket();");
+int main() {
+    int sockfd, n, len;
+    char buf[MAX];
+    struct sockaddr_in server, cli;
 
-    server.sin_family=AF_INET;
-    server.sin_addr.s_addr=INADDR_ANY;
-    server.sin_port=htons(atoi(argv[1]));
+    // Create UDP socket
+    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+        printf("Error in creating socket\n");
+    else
+        printf("Socket successfully created\n");
 
-    if(bind(sockfd,(struct sockaddr*)&server,sizeof(server))<0)
-    printf("Error in blind()! \n");
+    // Zero out server struct
+    bzero(&server, sizeof(server));
 
-    char buffer[100];
-    socklen_t server_len=sizeof(server);
-    printf("server waiting.....");
+    server.sin_family = AF_INET;
+    server.sin_port = htons(PORT);
+    server.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    if(recvfrom(sockfd,buffer,100,0,(struct sockaddr*)&server,&server_len)<0)
-    printf("Error in recvfrom()!");
+    // Bind the socket
+    if (bind(sockfd, (struct sockaddr*)&server, sizeof(server)) < 0) {
+        printf("Socket bind failed...\n");
+        return 1;
+    } else {
+        printf("Socket successfully binded...\n");
+    }
 
-    printf("Got a datagram:%s",buffer);
+    printf("Waiting for client...\n");
 
+    len = sizeof(cli);  // Set len before the loop
+
+    do {
+        n = recvfrom(sockfd, buf, sizeof(buf), 0, (struct sockaddr*)&cli, &len);
+        buf[n] = '\0';
+
+        if (n > 1)
+            printf("received : %s \n", buf);
+
+        scanf("%s", buf);
+        sendto(sockfd, buf, sizeof(buf), 0, (struct sockaddr*)&cli, len);
+
+    } while (strcmp(buf, "quit") != 0);
+
+    close(sockfd);
     return 0;
 }
